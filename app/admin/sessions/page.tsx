@@ -111,7 +111,7 @@ export default function SessionsPage() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="e.g. Smith Family"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 bg-gray-100 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -122,7 +122,7 @@ export default function SessionsPage() {
                 max={100}
                 value={count}
                 onChange={(e) => setCount(Number(e.target.value))}
-                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-20 px-3 py-2 bg-gray-100 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <button
