@@ -36,7 +36,7 @@ export default function SessionsPage() {
   async function loadSessions() {
     const res = await fetch('/api/admin/sessions')
     const data = await res.json()
-    setSessions(data)
+    setSessions(Array.isArray(data) ? data : [])
     setLoading(false)
   }
 
@@ -103,23 +103,28 @@ export default function SessionsPage() {
         {/* Create sessions */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h2 className="font-semibold text-gray-900 mb-4">Create Sessions</h2>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="Label (e.g. Smith Family)"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              title="Number of sessions to create"
-            />
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-500 mb-1">Session Label</label>
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g. Smith Family"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Qty</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={count}
+                onChange={(e) => setCount(Number(e.target.value))}
+                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
             <button
               onClick={createSessions}
               disabled={creating || !label.trim()}
@@ -128,7 +133,7 @@ export default function SessionsPage() {
               {creating ? 'Creating...' : 'Create'}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Set count &gt; 1 to create multiple sessions at once (e.g. &quot;Family 1&quot;, &quot;Family 2&quot;, ...)</p>
+          <p className="text-xs text-gray-400 mt-2">Set Qty &gt; 1 to create multiple sessions at once (e.g. &quot;Family 1&quot;, &quot;Family 2&quot;, ...)</p>
         </div>
 
         {/* Print selected */}

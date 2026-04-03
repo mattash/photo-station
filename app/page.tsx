@@ -9,8 +9,8 @@ export default function Home() {
           Scan your QR code card to register and receive your family photos.
         </p>
         <Link
-          href="/admin"
-          className="text-sm text-gray-400 hover:text-gray-600 underline"
+          href="/admin/login"
+          className="text-sm text-gray-500 hover:text-gray-700 underline"
         >
           Admin Login
         </Link>

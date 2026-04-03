@@ -19,7 +19,7 @@ export default function RegistrationsPage() {
   useEffect(() => {
     fetch('/api/admin/registrations')
       .then((r) => r.json())
-      .then((d) => { setRegistrations(d); setLoading(false) })
+      .then((d) => { setRegistrations(Array.isArray(d) ? d : []); setLoading(false) })
   }, [])
 
   return (
