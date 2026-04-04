@@ -12,6 +12,7 @@ create table registrations (
   session_id uuid references sessions(id) on delete cascade,
   email text not null,
   access_token text unique not null,
+  marketing_opt_in boolean not null default true,
   created_at timestamptz default now()
 );
 
