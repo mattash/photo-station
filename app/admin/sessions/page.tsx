@@ -18,7 +18,7 @@ function QRCard({ session, siteUrl }: { session: Session; siteUrl: string }) {
   return (
     <div className="qr-card">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/images/St.John-Final-logo-small.png" alt="St. John Armenian Apostolic Church" className="qr-card-logo" />
+      <img src="/images/St.John-Final-logo-large-trans.png" alt="St. John Armenian Apostolic Church" className="qr-card-logo" />
       <p className="qr-card-label">{session.label || 'Photo Session'}</p>
       <QRCodeSVG value={url} size={160} level="M" />
       <p className="qr-card-instruction">Scan to access your photos</p>
@@ -33,7 +33,8 @@ export default function SessionsPage() {
   const [label, setLabel] = useState('')
   const [count, setCount] = useState(1)
   const [creating, setCreating] = useState(false)
-  const [selectedForPrint, setSelectedForPrint] = useState<Set<string>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
   const printRef = useRef<HTMLDivElement>(null)
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -61,13 +62,21 @@ export default function SessionsPage() {
   }
 
   async function deleteSession(id: string) {
-    if (!confirm('Delete this session and all associated photos/registrations?')) return
     await fetch(`/api/admin/sessions/${id}`, { method: 'DELETE' })
     await loadSessions()
   }
 
-  function togglePrint(id: string) {
-    setSelectedForPrint((prev) => {
+  async function deleteSelected() {
+    if (!confirm(`Delete ${selected.size} session(s) and all their photos/registrations?`)) return
+    setDeleting(true)
+    await Promise.all([...selected].map((id) => fetch(`/api/admin/sessions/${id}`, { method: 'DELETE' })))
+    setSelected(new Set())
+    await loadSessions()
+    setDeleting(false)
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -75,18 +84,24 @@ export default function SessionsPage() {
     })
   }
 
-  function printSelected() {
-    window.print()
+  function toggleSelectAll() {
+    if (selected.size === sessions.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(sessions.map((s) => s.id)))
+    }
   }
 
-  const printableSessions = sessions.filter((s) => selectedForPrint.has(s.id))
+  const allSelected = sessions.length > 0 && selected.size === sessions.length
+  const someSelected = selected.size > 0 && selected.size < sessions.length
+  const printableSessions = sessions.filter((s) => selected.has(s.id))
 
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{`
         @page { size: letter; margin: 0.5in; }
         @media print {
-          body > * { display: none !important; }
+          body > div > *:not(#print-area) { display: none !important; }
           #print-area { display: flex !important; flex-wrap: wrap; gap: 0; }
         }
         .qr-card {
@@ -94,17 +109,22 @@ export default function SessionsPage() {
           height: 2.5in;
           box-sizing: border-box;
           border: 1.5px dashed #aaa;
-          padding: 0.2in 0.25in;
+          padding: 0.15in 0.2in;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 5px;
           background: white;
           font-family: sans-serif;
         }
+        .qr-card-logo {
+          width: 44px;
+          height: 44px;
+          object-fit: contain;
+        }
         .qr-card-label {
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 700;
           color: #111;
           text-align: center;
@@ -122,14 +142,9 @@ export default function SessionsPage() {
           text-align: center;
           margin: 0;
         }
-        .qr-card-logo {
-          width: 48px;
-          height: 48px;
-          object-fit: contain;
-        }
       `}</style>
 
-      {/* Print area - hidden on screen, visible when printing */}
+      {/* Print area - hidden on screen, shown only when printing */}
       <div id="print-area" className="hidden" ref={printRef}>
         {printableSessions.map((s) => (
           <QRCard key={s.id} session={s} siteUrl={siteUrl} />
@@ -152,6 +167,7 @@ export default function SessionsPage() {
                 type="text"
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && createSessions()}
                 placeholder="e.g. Smith Family"
                 className="w-full px-4 py-2 bg-gray-100 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -178,14 +194,23 @@ export default function SessionsPage() {
           <p className="text-xs text-gray-400 mt-2">Set Qty &gt; 1 to create multiple sessions at once (e.g. &quot;Family 1&quot;, &quot;Family 2&quot;, ...)</p>
         </div>
 
-        {/* Print selected */}
-        {selectedForPrint.size > 0 && (
+        {/* Selection action bar */}
+        {selected.size > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-            <span className="text-blue-800 text-sm font-medium">{selectedForPrint.size} card(s) selected for printing</span>
+            <span className="text-blue-800 text-sm font-medium">{selected.size} session(s) selected</span>
             <div className="flex gap-2">
-              <button onClick={() => setSelectedForPrint(new Set())} className="text-blue-600 text-sm hover:underline">Clear</button>
+              <button onClick={() => setSelected(new Set())} className="text-blue-600 text-sm hover:underline">
+                Clear
+              </button>
               <button
-                onClick={printSelected}
+                onClick={deleteSelected}
+                disabled={deleting}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? 'Deleting...' : 'Delete Selected'}
+              </button>
+              <button
+                onClick={() => window.print()}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
               >
                 Print QR Cards
@@ -200,49 +225,64 @@ export default function SessionsPage() {
         ) : sessions.length === 0 ? (
           <div className="text-gray-400 text-center py-8">No sessions yet. Create one above.</div>
         ) : (
-          <div className="space-y-2">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                className={`bg-white rounded-xl border p-4 flex items-center gap-4 transition-colors ${
-                  selectedForPrint.has(session.id) ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedForPrint.has(session.id)}
-                  onChange={() => togglePrint(session.id)}
-                  className="w-4 h-4 accent-blue-600"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900">{session.label || 'Unnamed Session'}</p>
-                  <p className="text-xs text-gray-400 font-mono">{session.id}</p>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-500">
-                  <span title="Registrations">{session.registrations?.[0]?.count ?? 0} reg</span>
-                  <span title="Photos">{session.photos?.[0]?.count ?? 0} photos</span>
-                  {session.photos_ready && (
-                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">Ready</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <QRCodeSVG
-                    value={`${siteUrl}/register?uid=${session.id}`}
-                    size={48}
-                    className="rounded"
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {/* Select-all header */}
+            <div className="flex items-center gap-4 px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected }}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 accent-blue-600"
+              />
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`flex items-center gap-4 px-4 py-4 transition-colors ${
+                    selected.has(session.id) ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(session.id)}
+                    onChange={() => toggleSelect(session.id)}
+                    className="w-4 h-4 accent-blue-600"
                   />
-                  <button
-                    onClick={() => deleteSession(session.id)}
-                    className="text-red-400 hover:text-red-600 p-1"
-                    title="Delete session"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900">{session.label || 'Unnamed Session'}</p>
+                    <p className="text-xs text-gray-400 font-mono">{session.id}</p>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    <span title="Registrations">{session.registrations?.[0]?.count ?? 0} reg</span>
+                    <span title="Photos">{session.photos?.[0]?.count ?? 0} photos</span>
+                    {session.photos_ready && (
+                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">Ready</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <QRCodeSVG
+                      value={`${siteUrl}/register?uid=${session.id}`}
+                      size={48}
+                      className="rounded"
+                    />
+                    <button
+                      onClick={() => deleteSession(session.id)}
+                      className="text-red-400 hover:text-red-600 p-1"
+                      title="Delete session"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         )}
       </div>
