@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { use } from 'react'
+import JSZip from 'jszip'
 
 interface Photo {
   id: string
@@ -20,6 +21,8 @@ export default function PhotosPage({ params }: { params: Promise<{ token: string
   const [data, setData] = useState<PhotoData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [downloading, setDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
 
   useEffect(() => {
     fetch(`/api/photos/${token}`)
@@ -43,10 +46,30 @@ export default function PhotosPage({ params }: { params: Promise<{ token: string
   }
 
   async function downloadAll() {
-    if (!data?.photos) return
-    for (const photo of data.photos) {
-      await downloadPhoto(photo.url, photo.filename)
+    if (!data?.photos.length) return
+    setDownloading(true)
+    setDownloadProgress(0)
+
+    const zip = new JSZip()
+    const total = data.photos.length
+
+    for (let i = 0; i < total; i++) {
+      const photo = data.photos[i]
+      const res = await fetch(photo.url)
+      const blob = await res.blob()
+      zip.file(photo.filename, blob)
+      setDownloadProgress(i + 1)
     }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(zipBlob)
+    a.download = 'photos.zip'
+    a.click()
+    URL.revokeObjectURL(a.href)
+
+    setDownloading(false)
+    setDownloadProgress(0)
   }
 
   if (loading) {
@@ -97,12 +120,15 @@ export default function PhotosPage({ params }: { params: Promise<{ token: string
           </div>
           <button
             onClick={downloadAll}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            disabled={downloading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-70 transition-colors flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download All
+            {downloading
+              ? `Zipping ${downloadProgress}/${data.photos.length}…`
+              : 'Download All'}
           </button>
         </div>
 

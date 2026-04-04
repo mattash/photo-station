@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "jszip": "^3.10.1",
     "nanoid": "^5.1.7",
     "next": "16.2.2",
     "qrcode.react": "^4.2.0",
