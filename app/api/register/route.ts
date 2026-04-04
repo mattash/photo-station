@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateAccessToken } from '@/lib/utils'
+import { sendPhotoReadyEmail } from '@/lib/notify'
 
 export async function POST(request: Request) {
   const { sessionId, email, marketingOptIn } = await request.json()
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
   // Validate session exists
   const { data: session, error: sessionError } = await supabaseAdmin
     .from('sessions')
-    .select('id')
+    .select('id, photos_ready')
     .eq('id', sessionId)
     .single()
 
@@ -40,6 +41,19 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // If photos are already ready for this session, notify immediately
+  if (session.photos_ready) {
+    try {
+      await sendPhotoReadyEmail(email.toLowerCase(), accessToken)
+      await supabaseAdmin
+        .from('registrations')
+        .update({ notified_at: new Date().toISOString() })
+        .eq('access_token', accessToken)
+    } catch {
+      // Non-fatal — registration succeeded, notification will be retried from admin
+    }
   }
 
   return NextResponse.json({ accessToken })

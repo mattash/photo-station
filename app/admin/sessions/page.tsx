@@ -8,7 +8,7 @@ interface Session {
   label: string
   created_at: string
   photos_ready: boolean
-  registrations: { count: number }[]
+  registrations: { notified_at: string | null }[]
   photos: { count: number }[]
 }
 
@@ -35,6 +35,7 @@ export default function SessionsPage() {
   const [creating, setCreating] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [notifying, setNotifying] = useState<string | null>(null)
   const printRef = useRef<HTMLDivElement>(null)
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
@@ -64,6 +65,13 @@ export default function SessionsPage() {
   async function deleteSession(id: string) {
     await fetch(`/api/admin/sessions/${id}`, { method: 'DELETE' })
     await loadSessions()
+  }
+
+  async function notifySession(id: string) {
+    setNotifying(id)
+    await fetch(`/api/admin/notify/${id}`, { method: 'POST' })
+    await loadSessions()
+    setNotifying(null)
   }
 
   async function deleteSelected() {
@@ -259,11 +267,33 @@ export default function SessionsPage() {
                     <p className="text-xs text-gray-400 font-mono">{session.id}</p>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-500">
-                    <span title="Registrations">{session.registrations?.[0]?.count ?? 0} reg</span>
-                    <span title="Photos">{session.photos?.[0]?.count ?? 0} photos</span>
-                    {session.photos_ready && (
-                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">Ready</span>
-                    )}
+                    {(() => {
+                      const regCount = session.registrations?.length ?? 0
+                      const notifiedCount = session.registrations?.filter(r => r.notified_at).length ?? 0
+                      const unnotified = regCount - notifiedCount
+                      return (
+                        <>
+                          <span title="Registrations">{regCount} reg</span>
+                          <span title="Photos">{session.photos?.[0]?.count ?? 0} photos</span>
+                          {session.photos_ready && (
+                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">Ready</span>
+                          )}
+                          {session.photos_ready && unnotified > 0 && (
+                            <button
+                              onClick={() => notifySession(session.id)}
+                              disabled={notifying === session.id}
+                              className="bg-yellow-500 text-white px-2 py-0.5 rounded-full text-xs font-medium hover:bg-yellow-600 disabled:opacity-50 transition-colors"
+                              title={`${unnotified} unnotified registration(s)`}
+                            >
+                              {notifying === session.id ? 'Sending...' : `Notify ${unnotified}`}
+                            </button>
+                          )}
+                          {session.photos_ready && regCount > 0 && unnotified === 0 && (
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">All notified</span>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                   <div className="flex items-center gap-2">
                     <QRCodeSVG

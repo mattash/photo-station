@@ -86,6 +86,47 @@ def get_sessions(sb: Client) -> list[dict]:
     return result.data or []
 
 
+def notify_registrations(sb: Client, session_id: str) -> tuple[int, int]:
+    """Send photo-ready emails to all unnotified registrations for a session."""
+    resend_key = os.environ.get('RESEND_API_KEY')
+    from_email = os.environ.get('RESEND_FROM_EMAIL')
+    site_url = os.environ.get('NEXT_PUBLIC_SITE_URL', '').rstrip('/')
+
+    if not resend_key or not from_email:
+        console.print("  [dim]Skipping notifications — RESEND_API_KEY or RESEND_FROM_EMAIL not set[/dim]")
+        return 0, 0
+
+    result = sb.table('registrations').select('id,email,access_token').eq('session_id', session_id).is_('notified_at', 'null').execute()
+    registrations = result.data or []
+
+    sent, failed = 0, 0
+    for reg in registrations:
+        photo_url = f"{site_url}/photos/{reg['access_token']}"
+        try:
+            import urllib.request, json as _json
+            payload = _json.dumps({
+                'from': f'St. John Photo Station <{from_email}>',
+                'to': reg['email'],
+                'subject': 'Your St. John photos are ready',
+                'html': f'<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px"><h1 style="font-size:20px;color:#111">Your photos are ready</h1><p style="color:#555">Your St. John Armenian Apostolic Church photos are ready to view and download.</p><a href="{photo_url}" style="background:#2563eb;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;display:inline-block">View My Photos</a><p style="color:#999;font-size:12px;margin-top:16px">{photo_url}</p></div>',
+            }).encode()
+            req = urllib.request.Request(
+                'https://api.resend.com/emails',
+                data=payload,
+                headers={'Authorization': f'Bearer {resend_key}', 'Content-Type': 'application/json'},
+                method='POST',
+            )
+            with urllib.request.urlopen(req) as resp:
+                resp.read()
+            sb.table('registrations').update({'notified_at': __import__('datetime').datetime.utcnow().isoformat()}).eq('id', reg['id']).execute()
+            sent += 1
+        except Exception as e:
+            console.print(f"  [red]Email failed for {reg['email']}: {e}[/red]")
+            failed += 1
+
+    return sent, failed
+
+
 def get_uploaded_paths(sb: Client, session_id: str) -> set[str]:
     """Return set of storage_path values already uploaded for this session."""
     result = sb.table('photos').select('storage_path').eq('session_id', session_id).execute()
@@ -274,12 +315,18 @@ def main(staging: Path, env_file: Path, dry_run: bool):
                     session_errors.append(f'{photo.name}: {msg}')
                 progress.advance(task)
 
-            # Mark session ready if we uploaded anything
+            # Mark session ready and notify registered users
             if session_uploaded > 0:
                 try:
                     sb.table('sessions').update({'photos_ready': True}).eq('id', session_id).execute()
                 except Exception as e:
                     console.print(f"[yellow]Warning: could not mark session ready: {e}[/yellow]")
+
+                notify_sent, notify_failed = notify_registrations(sb, session_id)
+                if notify_sent:
+                    console.print(f"  [green]Notified {notify_sent} registration(s)[/green]")
+                if notify_failed:
+                    console.print(f"  [yellow]Failed to notify {notify_failed} registration(s) — retry from admin UI[/yellow]")
 
             if session_errors:
                 for err in session_errors:

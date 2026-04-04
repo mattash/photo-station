@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('sessions')
-    .select('*, registrations(count), photos(count)')
+    .select('*, registrations(notified_at), photos(count)')
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
