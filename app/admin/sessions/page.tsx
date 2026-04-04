@@ -14,11 +14,15 @@ interface Session {
 
 function QRCard({ session, siteUrl }: { session: Session; siteUrl: string }) {
   const url = `${siteUrl}/register?uid=${session.id}`
+  const displayUrl = siteUrl.replace(/^https?:\/\//, '')
   return (
-    <div className="qr-card bg-white border-2 border-gray-200 rounded-xl p-4 flex flex-col items-center gap-3 w-48">
-      <p className="text-xs font-semibold text-gray-600 text-center">{session.label || 'Photo Session'}</p>
-      <QRCodeSVG value={url} size={140} />
-      <p className="text-[10px] text-gray-400 text-center break-all">{session.id.slice(0, 8)}...</p>
+    <div className="qr-card">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/images/St.John-Final-logo-small.png" alt="St. John Armenian Apostolic Church" className="qr-card-logo" />
+      <p className="qr-card-label">{session.label || 'Photo Session'}</p>
+      <QRCodeSVG value={url} size={160} level="M" />
+      <p className="qr-card-instruction">Scan to access your photos</p>
+      <p className="qr-card-url">{displayUrl}</p>
     </div>
   )
 }
@@ -80,10 +84,48 @@ export default function SessionsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <style>{`
+        @page { size: letter; margin: 0.5in; }
         @media print {
           body > * { display: none !important; }
-          #print-area { display: flex !important; }
-          #print-area { flex-wrap: wrap; gap: 16px; padding: 16px; }
+          #print-area { display: flex !important; flex-wrap: wrap; gap: 0; }
+        }
+        .qr-card {
+          width: 3.5in;
+          height: 2.5in;
+          box-sizing: border-box;
+          border: 1.5px dashed #aaa;
+          padding: 0.2in 0.25in;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: white;
+          font-family: sans-serif;
+        }
+        .qr-card-label {
+          font-size: 18px;
+          font-weight: 700;
+          color: #111;
+          text-align: center;
+          margin: 0;
+        }
+        .qr-card-instruction {
+          font-size: 11px;
+          color: #444;
+          text-align: center;
+          margin: 0;
+        }
+        .qr-card-url {
+          font-size: 10px;
+          color: #888;
+          text-align: center;
+          margin: 0;
+        }
+        .qr-card-logo {
+          width: 48px;
+          height: 48px;
+          object-fit: contain;
         }
       `}</style>
 

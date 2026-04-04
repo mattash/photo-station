@@ -1,11 +1,20 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Photo Station Admin</h1>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/images/St.John-Final-logo-small.png"
+              alt="St. John Armenian Apostolic Church"
+              width={48}
+              height={48}
+            />
+            <h1 className="text-3xl font-bold text-gray-900">Photo Station Admin</h1>
+          </div>
           <form action="/api/admin/logout" method="POST">
             <button
               type="submit"
