@@ -51,7 +51,7 @@ export async function sendPhotoReadyEmail(email: string, accessToken: string): P
   }
 }
 
-export async function notifySession(sessionId: string): Promise<{ sent: string[]; failed: string[] }> {
+export async function notifySession(sessionId: string): Promise<{ sent: string[]; failed: string[]; errors: string[] }> {
   const { data: registrations } = await supabaseAdmin
     .from('registrations')
     .select('id, email, access_token')
@@ -61,6 +61,8 @@ export async function notifySession(sessionId: string): Promise<{ sent: string[]
   const sent: string[] = []
   const failed: string[] = []
 
+  const errors: string[] = []
+
   for (const reg of registrations ?? []) {
     try {
       await sendPhotoReadyEmail(reg.email, reg.access_token)
@@ -69,10 +71,11 @@ export async function notifySession(sessionId: string): Promise<{ sent: string[]
         .update({ notified_at: new Date().toISOString() })
         .eq('id', reg.id)
       sent.push(reg.email)
-    } catch {
+    } catch (e) {
       failed.push(reg.email)
+      errors.push(`${reg.email}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  return { sent, failed }
+  return { sent, failed, errors }
 }
