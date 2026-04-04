@@ -106,17 +106,18 @@ export default function SessionsPage() {
         }
         .qr-card {
           width: 3.5in;
-          height: 2.5in;
+          height: 3.2in;
           box-sizing: border-box;
           border: 1.5px dashed #aaa;
-          padding: 0.15in 0.2in;
+          padding: 0.2in 0.25in;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 5px;
+          gap: 6px;
           background: white;
           font-family: sans-serif;
+          break-inside: avoid;
         }
         .qr-card-logo {
           width: 44px;
