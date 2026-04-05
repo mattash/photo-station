@@ -110,7 +110,9 @@ export default function SessionsPage() {
         @page { size: letter; margin: 0.5in; }
         @media print {
           body > div > *:not(#print-area) { display: none !important; }
-          #print-area { display: flex !important; flex-wrap: wrap; gap: 0; }
+          #print-area { display: block !important; }
+          .print-page { display: flex; flex-wrap: wrap; gap: 0; break-after: page; }
+          .print-page:last-child { break-after: avoid; }
         }
         .qr-card {
           width: 3.5in;
@@ -155,8 +157,12 @@ export default function SessionsPage() {
 
       {/* Print area - hidden on screen, shown only when printing */}
       <div id="print-area" className="hidden" ref={printRef}>
-        {printableSessions.map((s) => (
-          <QRCard key={s.id} session={s} siteUrl={siteUrl} />
+        {Array.from({ length: Math.ceil(printableSessions.length / 6) }, (_, pageIndex) => (
+          <div key={pageIndex} className="print-page">
+            {printableSessions.slice(pageIndex * 6, pageIndex * 6 + 6).map((s) => (
+              <QRCard key={s.id} session={s} siteUrl={siteUrl} />
+            ))}
+          </div>
         ))}
       </div>
 
